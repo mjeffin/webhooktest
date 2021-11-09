@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
@@ -119,12 +118,10 @@ func sendBatch(payloads []LogPayload, postEndpoint string) error {
 //POST_ENDPOINT - A valid url
 func getBatchConfig() (batchSize int, batchInterval time.Duration, postEndpoint string) {
 	batchSize,err := strconv.Atoi(os.Getenv("BATCH_SIZE"))
-	fmt.Println(batchSize)
 	if err != nil {
 		log.Fatalf("Error parsing batch size - %s\nexiting",err)
 	}
 	bis := os.Getenv("BATCH_INTERVAL")
-	fmt.Println(bis)
 	batchInterval, err = time.ParseDuration(bis)
 	if err != nil {
 		log.Fatalf("Error parsing batch interval - %v\nexiting",err)
