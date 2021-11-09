@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="runapp" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="webhook" />
+    <working_directory value="$PROJECT_DIR$" />
+    <envs>
+      <env name="BATCH_SIZE" value="5" />
+      <env name="BATCH_INTERVAL" value="1m" />
+    </envs>
+    <kind value="FILE" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/main.go" />
+    <method v="2" />
+  </configuration>
+</component>

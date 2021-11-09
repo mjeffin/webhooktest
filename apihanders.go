@@ -10,7 +10,7 @@ import (
 //LogHandler is the handler for /log post endpoint. It deserializes the body according to LogPayload struct
 // TODO - implement batching
 // TODO - logging and adding more info to errors
-func LogHandler() gin.HandlerFunc  {
+func LogHandler(lpc chan LogPayload) gin.HandlerFunc  {
 	return func(c *gin.Context) {
 		j,err := io.ReadAll(c.Request.Body)
 		if err != nil {
@@ -21,7 +21,8 @@ func LogHandler() gin.HandlerFunc  {
 		if err != nil {
 			log.Println(err)
 		}
-		log.Println(lp)
+		//log.Println(lp)
+		lpc <- lp
 		c.JSON(200,gin.H{
 			"status":"ok",
 		})
