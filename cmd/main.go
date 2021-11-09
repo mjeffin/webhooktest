@@ -8,8 +8,7 @@ import (
 func main() {
 	r := gin.Default()
 	c := make(chan webhooks.LogPayload)
-	batchSize, batchInterval := webhooks.GetBatchConfig()
-	go webhooks.BatchRoutine(c,batchSize, batchInterval )
+	go webhooks.BatchRoutine(c)
 	r.GET("/healthz",webhooks.HealthzHandler())
 	r.POST("/log",webhooks.LogHandler(c))
 	r.Run() // listen and serve on 0.0.0.0:8080

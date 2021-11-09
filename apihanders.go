@@ -2,6 +2,7 @@ package webhooks
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
 	"log"
@@ -28,10 +29,24 @@ func LogHandler(lpc chan LogPayload) gin.HandlerFunc  {
 		})
 	}
 }
-
+// HealthzHandler - for the health endpoint. Since content type is not specified,sending response as text
 func HealthzHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		//c.JSON(200, gin.H{"status":"OK"}), // for json response
 		c.String(200,"%s","OK") // for string response
+	}
+}
+
+//TestPostEndpoint is used for testig the test endpoint and is not part of the main application
+func TestPostEndpoint() gin.HandlerFunc  {
+	return func(c *gin.Context) {
+		j,err := io.ReadAll(c.Request.Body)
+		if err != nil {
+			log.Println(err)
+		}
+		fmt.Println(string(j))
+		c.JSON(200,gin.H{
+			"status":"ok",
+		})
 	}
 }

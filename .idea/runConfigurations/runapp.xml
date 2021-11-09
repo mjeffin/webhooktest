@@ -5,6 +5,7 @@
     <envs>
       <env name="BATCH_SIZE" value="5" />
       <env name="BATCH_INTERVAL" value="1m" />
+      <env name="POST_ENDPOINT" value="http://localhost:8081/test" />
     </envs>
     <kind value="FILE" />
     <directory value="$PROJECT_DIR$" />
