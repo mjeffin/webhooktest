@@ -16,7 +16,10 @@ func main() {
 	r.GET("/healthz",webhooks.HealthzHandler())
 	r.POST("/log",webhooks.LogHandler(c))
 	log.Info("Started the webhook server")
-	r.Run() // listen and serve on 0.0.0.0:8080
+	err := r.Run() // listen and serve on 0.0.0.0:8080
+	if err != nil {
+		log.Fatalf("Error starting server")
+	}
 }
 
 
