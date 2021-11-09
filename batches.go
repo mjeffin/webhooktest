@@ -3,8 +3,9 @@ package webhooks
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/url"
 	"os"
@@ -12,69 +13,103 @@ import (
 	"time"
 )
 
+const (
+	maxReties = 3
+	secondsToWait = 2
+)
+
 //BatchRoutine is the background go routine which receives and stores the LogPayload struct from gin handler
 //When a set batch size is reached OR the batch interval has passed the application should forward the collected records
 //as an array to the post endpoint and clear the in-memory cache of objects.
-//clearing in-memory cache of objects is done by garbage collector as the go-routine exits after calling resetBatch
+//clearing in-memory cache of objects is done by garbage collector as the go-routine exits after calling processBatch
 //Configs could have been passed from the main function too. That's how I implemented it initially
 //Slightly faster that way, but slightly less readable and add tighter coupling too!
 // References - https://talks.golang.org/2012/concurrency.slide
 func BatchRoutine(c chan LogPayload)  {
 	batchSize, batchInterval,postEndpoint := getBatchConfig()
+	log.WithFields(log.Fields{"batch_size":batchSize,"batch_interval":batchInterval.String()}).Info("starting new batch in go-routine")
 	var payloads []LogPayload
 	timeout := time.After(batchInterval)
 	for {
 		select {
 		case p:= <-c:
 			payloads = append(payloads, p)
-			fmt.Printf("Current batch size - %d\n",len(payloads))
+			log.WithFields(log.Fields{"current_batch_size":len(payloads)}).Info("payload added to batch")
 			if len(payloads) == batchSize {
-				log.Println("Batch size exceeded. Resetting the batch")
-				resetBatch(payloads,c,postEndpoint)
+				log.Info("Batch size exceeded. Processing the batch")
+				processBatch(payloads,c,postEndpoint)
 				return
 			}
 		case <- timeout :
-			log.Println("Batch interval elapsed. Resetting the batch. Current batch size -",len(payloads))
-			resetBatch(payloads,c,postEndpoint)
+			log.Info("Batch interval elapsed. Processing the batch")
+			processBatch(payloads,c,postEndpoint)
 			return
 		}
 	}
 }
 
-//resetBatch sends the current batch for processing
+//processBatch sends the current batch for processing
 //Called by BatchRoutine when the reset conditions are met.
 //Calls BatchRoutine as a go-routine and exits
 //Exit the program if there is error processing the batch
 //ASSUMPTION - Post to test endpoint is done only if batch size > 0. why waste resource
 //Could have done this using recursion inside BatchRoutine itself, but what's the base condition to stop infinite recursion ?
 //Infinite recursion could have been stopped by calling itself as go routine and exiting immediately.
-func resetBatch(payloads []LogPayload, c chan LogPayload, postEndpoint string) {
+func processBatch(payloads []LogPayload, c chan LogPayload, postEndpoint string) {
 	go BatchRoutine(c) // immediately start the next batch
 	currBatchSize := len(payloads)
-	if currBatchSize >0 {
-		err := processBatch(payloads,postEndpoint)
+	log.WithFields(log.Fields{"batch_size":currBatchSize}).Info("Received a new batch to process")
+	if currBatchSize < 1 {
+		return
+	}
+	for i:=0;i<maxReties;i++ {
+		err := sendBatch(payloads,postEndpoint)
 		if err != nil {
-			log.Fatalf("%v\nUnable to send the bactch to post endpoint.\n Quitting",err)
-			os.Exit(1)
+			if i == (maxReties -1) {
+				log.WithFields(log.Fields{"retry_counter":maxReties}).Fatalf("Unable to send the batch to post endpoint after maximum reties. Quitting")
+			} else {
+				log.WithFields(log.Fields{"retry_counter":i+1}).Errorf("Sending batch to post endpoint failed. Retrying after %d seconds",secondsToWait)
+				time.Sleep(secondsToWait * time.Second)
+			}
 		} else {
-			log.Println("batch processed successfully. Starting new batch")
+			return
 		}
 	}
 }
 
-//processBatch sends the batch to api endpoint
-func processBatch(payloads []LogPayload, postEndpoint string) error {
+//sendBatch sends the batch to api endpoint
+func sendBatch(payloads []LogPayload, postEndpoint string) error {
 	b,err := json.Marshal(payloads)
 	if err != nil {
-		fmt.Println(err)
+		log.WithFields(log.Fields{"error":err}).Error()
+		return errors.New("error marshalling records to send to post endpoint")
 	}
 	buf := bytes.NewBuffer(b)
+	startTime := time.Now()
 	r,err := http.Post(postEndpoint,"application/json",buf)
+	endTime := time.Now()
+	elapsed := endTime.Sub(startTime)
 	if err != nil {
-		fmt.Println(err)
+		log.WithFields(log.Fields{"error":err,"post_duration": elapsed.String(),
+			"batch_size": len(payloads)}).Error("error sending records to post endpoint")
+		return errors.New("error sending records to post endpoint")
 	}
-	fmt.Println(r.StatusCode)
+	if !(r.StatusCode >= 200 && r.StatusCode <= 299) {
+		log.WithFields(log.Fields{
+			"status_code": r.StatusCode,
+			"post_duration": elapsed.String(),
+			"batch_size": len(payloads),
+		}).Error("Post api endpoint returned non success status code. Have to retry")
+		return errors.New("post api endpoint returned non success status code Have to retry")
+	}
+	log.WithFields(log.Fields{
+		"status_code": r.StatusCode,
+		"post_duration": elapsed.String(),
+		"batch_size": len(payloads),
+	}).Info("Batch post succeeded")
+	r.Body.Close()
 	return nil
+	//return errors.New("testing")
 }
 
 //GetBatchConfig process the environment variables and returns them in appropriate types
