@@ -5,8 +5,8 @@
 - Inside the handler function, de-serialize the input and pass the payload to channel
 - BatchRoutine waits for message in channel or timeout inside a for-select-case loop
 - When batch size exceeds or timeout occurs, it calls batchProcess function and returns and garbage collects
-- batchProcess immediately starts a new BatchRoutine as go-routine
-- batchProcess calls the sendBatch function to post the batch using retry mechanism
+- processBatch immediately starts a new BatchRoutine as go-routine
+- processBatch calls the sendBatch function to post the batch using retry mechanism
 
 ## Environment Variables
 
