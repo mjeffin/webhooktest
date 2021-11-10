@@ -12,6 +12,7 @@ import (
 func LogHandler(lpc chan LogPayload) gin.HandlerFunc  {
 	return func(c *gin.Context) {
 		j,err := io.ReadAll(c.Request.Body)
+		defer c.Request.Body.Close()
 		if err != nil {
 			log.Error("Error reading payload",err)
 			c.JSON(500, gin.H{"status":err.Error()})
