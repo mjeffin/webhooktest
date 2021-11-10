@@ -21,6 +21,9 @@ ENV POST_ENDPOINT=http://127.0.0.1:8081/test
 Pass the post endpoint as mandatory environment variable. batch size and endpoint has defaults
 
 **Example**
+```shell
 docker build -t webhooktest .
 docker run  -p 8080:8080 -e POST_ENDPOINT=http://requestbin.net/r/gbpb57il webhooktest
+```
+
 
