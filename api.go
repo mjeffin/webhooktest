@@ -26,7 +26,9 @@ func LogHandler(lpc chan LogPayload) gin.HandlerFunc  {
 			return
 		}
 		log.Info("Received and parsed webhook payload")
-		lpc <- lp
+		go func() { // to avoid blocking even in the case BatchRoutine is not ready.
+			lpc <- lp
+		}()
 		c.JSON(200,gin.H{
 			"status":"ok",
 		})

@@ -77,6 +77,7 @@ func processBatch(payloads []LogPayload, c chan LogPayload, postEndpoint string)
 }
 
 //sendBatch sends the batch to api endpoint
+// returns error in case if post endpoint is unreachable or responded with non 2xx status code
 func sendBatch(payloads []LogPayload, postEndpoint string) error {
 	b,err := json.Marshal(payloads)
 	if err != nil {
